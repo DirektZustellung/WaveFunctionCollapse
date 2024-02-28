@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
+using System.IO;
+
 
 public class WaveFunction : MonoBehaviour
 {
@@ -11,11 +13,17 @@ public class WaveFunction : MonoBehaviour
     public Tile[] tileObjects;
     public List<Cell> gridComponents;
     public Cell cellObj;
+    public GameObject floor;
+    private string resourcesPath, fullPath;
+    private  const string fileNamePrefix = "Map_";
 
     int iterations = 0;
-
+   
     void Awake()
     {
+        resourcesPath = Application.dataPath + "/Resources";
+        CreateNewFile();
+
         gridComponents = new List<Cell>();
         InitializeGrid();
     }
@@ -29,6 +37,8 @@ public class WaveFunction : MonoBehaviour
                 Cell newCell = Instantiate(cellObj, new Vector2(x, y), Quaternion.identity);
                 newCell.CreateCell(false, tileObjects);
                 gridComponents.Add(newCell);
+                //Ponemos el suelo de fondo
+                Instantiate(floor, new Vector2(x,y), Quaternion.identity);
             }
         }
 
@@ -61,7 +71,7 @@ public class WaveFunction : MonoBehaviour
             tempGrid.RemoveRange(stopIndex, tempGrid.Count - stopIndex);
         }
 
-        yield return new WaitForSeconds(0.01f);
+        yield return new WaitForSeconds(0.00f);
 
         CollapseCell(tempGrid);
     }
@@ -78,6 +88,7 @@ public class WaveFunction : MonoBehaviour
 
         Tile foundTile = cellToCollapse.tileOptions[0];
         Instantiate(foundTile, cellToCollapse.transform.position, Quaternion.identity);
+        SavePositionToFile((int)cellToCollapse.transform.position.x, (int)cellToCollapse.transform.position.y, foundTile.name);
 
         UpdateGeneration();
     }
@@ -205,4 +216,52 @@ public class WaveFunction : MonoBehaviour
             }
         }
     }
+
+    void CreateNewFile()
+    {
+        // Obtener todos los archivos que comiencen con el prefijo
+        string[] existingFiles = Directory.GetFiles(resourcesPath, $"{fileNamePrefix}*.txt");
+
+        // Obtener el número más alto de archivo existente
+        int maxFileNumber = 0;
+        foreach (string filePath in existingFiles)
+        {
+            string fileName = Path.GetFileNameWithoutExtension(filePath);
+            string numberString = fileName.Substring(fileNamePrefix.Length);
+            if (int.TryParse(numberString, out int number))
+            {
+                if (number > maxFileNumber)
+                {
+                    maxFileNumber = number;
+                }
+            }
+        }
+
+        // Crear el nuevo archivo con el número siguiente
+        int nextFileNumber = maxFileNumber + 1;
+        string newFileName = $"{fileNamePrefix}{nextFileNumber}.txt";
+        fullPath = Path.Combine(resourcesPath, newFileName);
+    }
+
+        void SavePositionToFile(int x, int y, string elementName)
+    {
+        // Directorio de la carpeta Resources
+        //string resourcesPath = Application.dataPath + "/Resources";
+
+        // Ruta del archivo en la carpeta Resources
+        //string fullPath = Path.Combine(resourcesPath, fullPath);
+
+        try
+        {
+            using (StreamWriter writer = new StreamWriter(fullPath, true))
+            {
+                writer.WriteLine($"{x},{y},{elementName}");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("Error al guardar las posiciones: " + ex.Message);
+        }
+    }
+
 }
